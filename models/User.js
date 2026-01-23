@@ -1,8 +1,9 @@
-const mongoose = require("mongoose");
+// models/User.js
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
+    fullName: {
       type: String,
       required: true
     },
@@ -17,17 +18,16 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["renter", "owner", "admin"],
-      default: "renter"
+      enum: ['renter', 'owner', 'admin'],
+      default: 'renter'
     },
-    favorites: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "House"
-      }
-    ]
+   
+    favorites: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'House'
+    }]
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);

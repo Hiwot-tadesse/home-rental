@@ -2,21 +2,39 @@ const express = require("express");
 const router = express.Router();
 
 const auth = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware"); // dynamic
+const admin = require("../middleware/adminMiddleware");
 
 const {
   createHouse,
-  getHouses,
-  getHouseById,
-  deleteHouse
+  getApprovedHouses,
+  getOwnerHouses,
+  getPendingHouses,
+  approveHouse,
+  rejectHouse,
+  deleteHouse,
 } = require("../controllers/houseController");
 
-// Public routes
-router.get("/", getHouses);
-router.get("/:id", getHouseById);
+// --------------------
+// RENTER (PUBLIC)
+// --------------------
+router.get("/", getApprovedHouses);
 
-// Protected routes (Owner/Admin only)
-router.post("/", auth, roleMiddleware(["owner", "admin"]), createHouse);
-router.delete("/:id", auth, roleMiddleware(["owner", "admin"]), deleteHouse);
+// --------------------
+// OWNER
+// --------------------
+router.post("/", auth, createHouse);
+router.get("/my-houses", auth, getOwnerHouses);
+
+// --------------------
+// ADMIN
+// --------------------
+router.get("/pending", auth, admin, getPendingHouses);
+router.patch("/:id/approve", auth, admin, approveHouse);
+router.patch("/:id/reject", auth, admin, rejectHouse);
+
+// --------------------
+// OWNER / ADMIN
+// --------------------
+router.delete("/:id", auth, deleteHouse);
 
 module.exports = router;

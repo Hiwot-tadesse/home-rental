@@ -1,69 +1,59 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const User = require("../models/User");
-const House = require("../models/House");
-const authMiddleware = require("../middleware/authMiddleware");
+const authMiddleware = require('../middleware/authMiddleware');
+const User = require('../models/User');
 
-// ----------------------
-// ADD a house to favorites
-// ----------------------
-router.post("/:houseId", authMiddleware, async (req, res) => {
-    try {
-        const { houseId } = req.params;
+router.use(authMiddleware);
 
-        // Check if house exists
-        const house = await House.findById(houseId);
-        if (!house) return res.status(404).json({ message: "House not found" });
-
-        // Add to favorites if not already there
-        const user = await User.findById(req.user.id);
-        if (user.favorites.includes(houseId)) {
-            return res.status(400).json({ message: "House already in favorites" });
-        }
-
-        user.favorites.push(houseId);
-        await user.save();
-
-        return res.status(200).json({ success: true, favorites: user.favorites });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Server error" });
-    }
+// ✅ GET user's favorite properties
+router.get('/', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('favorites');
+    res.json(user.favorites);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
-// ----------------------
-// REMOVE a house from favorites
-// ----------------------
-router.delete("/:houseId", authMiddleware, async (req, res) => {
-    try {
-        const { houseId } = req.params;
-
-        const user = await User.findById(req.user.id);
-        if (!user.favorites.includes(houseId)) {
-            return res.status(400).json({ message: "House not in favorites" });
-        }
-
-        user.favorites = user.favorites.filter(fav => fav.toString() !== houseId);
-        await user.save();
-
-        return res.status(200).json({ success: true, favorites: user.favorites });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Server error" });
+// ✅ ADD to favorites - using POST with houseId in URL
+router.post('/:houseId', async (req, res) => {
+  try {
+    const { houseId } = req.params;
+    
+    // Validate houseId format
+    if (!houseId || houseId.length !== 24) {
+      return res.status(400).json({ message: 'Invalid house ID' });
     }
+
+    const user = await User.findById(req.user.id);
+    if (!user.favorites.includes(houseId)) {
+      user.favorites.push(houseId);
+      await user.save();
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Add favorite error:', error);
+    res.status(500).json({ message: error.message });
+  }
 });
 
-// ----------------------
-// GET all favorite houses
-// ----------------------
-router.get("/", authMiddleware, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).populate("favorites");
-        return res.status(200).json({ success: true, favorites: user.favorites });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Server error" });
+// ✅ REMOVE from favorites
+router.delete('/:houseId', async (req, res) => {
+  try {
+    const { houseId } = req.params;
+    
+    if (!houseId || houseId.length !== 24) {
+      return res.status(400).json({ message: 'Invalid house ID' });
     }
+
+    const user = await User.findById(req.user.id);
+    user.favorites = user.favorites.filter(fav => fav.toString() !== houseId);
+    await user.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove favorite error:', error);
+    res.status(500).json({ message: error.message });
+  }
 });
 
 module.exports = router;

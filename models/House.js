@@ -1,40 +1,33 @@
-const mongoose = require("mongoose");
-
-const houseSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: true
-    },
-    description: {
-      type: String,
-      required: true
-    },
-    price: {
-      type: Number,
-      required: true
-    },
-    location: {
-      type: String,
-      required: true
-    },
-    images: [
-      {
-        type: String
-      }
-    ],
-    status: {
-      type: String,
-      enum: ["available", "rented"],
-      default: "available"
-    },
-    owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
-    }
+const mongoose = require('mongoose'); 
+const houseSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  price: Number,
+  location: String,
+  city: String,
+  rooms: Number,
+  bathrooms: Number,
+  area_sqft: Number,
+  images: [String],
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected", "rented"],
+    default: "pending"
   },
-  { timestamps: true }
-);
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  }
+}, { timestamps: true });
 
-module.exports = mongoose.model("House", houseSchema);
+houseSchema.set("toJSON", {
+  virtuals: true,
+  transform: (_, ret) => {
+    ret.id = ret._id;
+    delete ret._id;
+    delete ret.__v;
+  }
+});
+
+module.exports = mongoose.model("House", houseSchema); 
