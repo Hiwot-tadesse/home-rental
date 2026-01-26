@@ -1,29 +1,42 @@
+// src/pages/OwnerProfile.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOwnerProperties } from '@/hooks/useProperties';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Phone, User, Save, Plus, Clock, CheckCircle, XCircle, Key } from 'lucide-react';
+import { Loader2, Mail, Phone, User, Save, Plus, Clock, CheckCircle, XCircle, Key, Home } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function Profile() {
+export default function OwnerProfile() {
   const { user, role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { data: properties } = useOwnerProperties();
+  const { data: properties, isLoading: propertiesLoading } = useOwnerProperties();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
 
+  // 🔥 Redirect if not owner or not logged in
   useEffect(() => {
-    if (!authLoading && !user) navigate('/auth');
-  }, [user, authLoading, navigate]);
+    if (!authLoading) {
+      if (!user) {
+        navigate('/auth');
+      } else if (role !== 'owner') {
+        // Redirect non-owners to their respective dashboards
+        if (role === 'admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/browse');
+        }
+      }
+    }
+  }, [user, role, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -38,6 +51,7 @@ export default function Profile() {
     if (!user) return;
     setSaving(true);
 
+    // Store in localStorage (replace with API call later)
     localStorage.setItem('userPhone', phone);
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
     storedUser.full_name = fullName;
@@ -47,7 +61,7 @@ export default function Profile() {
     setSaving(false);
   };
 
-  if (authLoading || loading) {
+  if (authLoading || loading || propertiesLoading) {
     return (
       <Layout>
         <div className="container py-20 flex items-center justify-center">
@@ -64,20 +78,25 @@ export default function Profile() {
   };
 
   const statusConfig = {
-    pending: { label: 'Pending', icon: Clock, className: 'bg-yellow-100 text-yellow-800' },
+    pending: { label: 'Pending Review', icon: Clock, className: 'bg-yellow-100 text-yellow-800' },
     approved: { label: 'Approved', icon: CheckCircle, className: 'bg-green-100 text-green-800' },
     rejected: { label: 'Rejected', icon: XCircle, className: 'bg-red-100 text-red-800' },
     rented: { label: 'Rented', icon: Key, className: 'bg-blue-100 text-blue-800' },
   };
+
+  // Calculate stats
+  const pendingCount = properties?.filter(p => p.status === 'pending').length || 0;
+  const approvedCount = properties?.filter(p => p.status === 'approved').length || 0;
+  const rentedCount = properties?.filter(p => p.status === 'rented').length || 0;
 
   return (
     <Layout>
       <div className="container py-8 max-w-2xl">
         <div className="mb-8">
           <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
-            My Profile
+            Owner Profile
           </h1>
-          <p className="text-muted-foreground">Manage your account information</p>
+          <p className="text-muted-foreground">Manage your account and property information</p>
         </div>
 
         <Card className="shadow-soft">
@@ -92,7 +111,6 @@ export default function Profile() {
               <div>
                 <h2 className="font-display text-xl font-semibold">{fullName || 'User'}</h2>
                 <p className="text-muted-foreground">{user?.email}</p>
-
                 {role && (
                   <Badge className={`mt-2 ${roleColors[role]}`}>
                     {role.charAt(0).toUpperCase() + role.slice(1)}
@@ -103,43 +121,57 @@ export default function Profile() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* ================= OWNER DASHBOARD LINK ================= */}
+            <div className="space-y-6">
+              <h3 className="font-display text-lg font-semibold">Your Property Overview</h3>
+              
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="shadow-soft">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      Pending Review
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+                  </CardContent>
+                </Card>
 
-            {/* ================= OWNER SECTION ================= */}
-            {role === 'owner' && (
-              <div className="space-y-6">
-                <h3 className="font-display text-lg font-semibold">Your Property Stats</h3>
+                <Card className="shadow-soft">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <CheckCircle className="h-4 w-4" />
+                      Approved
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-green-600">{approvedCount}</p>
+                  </CardContent>
+                </Card>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.keys(statusConfig).map((status) => {
-                    const count = properties?.filter((p) => p.status === status).length || 0;
-                    const cfg = statusConfig[status];
-                    const Icon = cfg.icon;
-                    return (
-                      <Card key={status} className="shadow-soft">
-                        <CardContent className="pt-4 pb-4">
-                          <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg ${cfg.className}`}>
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-xl font-bold">{count}</p>
-                              <p className="text-xs text-muted-foreground">{cfg.label}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-
-                <Button asChild className="btn-gradient w-full mt-2">
-                  <Link to="/owner-dashboard">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Manage Properties
-                  </Link>
-                </Button>
+                <Card className="shadow-soft">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Key className="h-4 w-4" />
+                      Rented
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-blue-600">{rentedCount}</p>
+                  </CardContent>
+                </Card>
               </div>
-            )}
+
+              {/* ✅ FIXED: Updated route path to match your file structure */}
+              <Button asChild className="btn-gradient w-full">
+                <Link to="/owner/dashboard">
+                  <Home className="h-4 w-4 mr-2" />
+                  Go to Owner Dashboard
+                </Link>
+              </Button>
+            </div>
 
             {/* ================= USER FIELDS ================= */}
             <div className="space-y-4">
@@ -148,7 +180,12 @@ export default function Profile() {
                   <Mail className="h-4 w-4" />
                   Email
                 </Label>
-                <Input id="email" value={user?.email || ''} disabled className="bg-muted" />
+                <Input
+                  id="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
                 <p className="text-xs text-muted-foreground">Email cannot be changed</p>
               </div>
 

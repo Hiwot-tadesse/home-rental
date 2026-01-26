@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // ✅ Added Link import
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Phone, User, Save } from 'lucide-react';
+import { Loader2, Mail, Phone, User, Save, Heart, Home } from 'lucide-react'; // ✅ Added Heart and Home icons
 import { toast } from 'sonner';
 
 export default function Profile() {
@@ -19,15 +19,24 @@ export default function Profile() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
 
+  // 🔥 Role-based redirect logic
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
+    if (!authLoading) {
+      if (!user) {
+        navigate('/auth');
+      } else if (role !== 'renter') {
+        // Redirect non-renters to their appropriate dashboards
+        if (role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (role === 'owner') {
+          navigate('/owner/profile'); // ✅ Owners go to their own profile
+        }
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, role, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
-      // Load profile from localStorage or user data
       setFullName(user.fullName || '');
       const storedPhone = localStorage.getItem('userPhone') || '';
       setPhone(storedPhone);
@@ -39,10 +48,7 @@ export default function Profile() {
     if (!user) return;
     setSaving(true);
 
-    // TODO: Replace with your API call
-    // Example: await fetch(`/api/users/${user.id}/profile`, { method: 'PATCH', body: JSON.stringify({ full_name: fullName, phone }) });
-    
-    // For now, store in localStorage
+    // Store in localStorage (replace with API call later)
     localStorage.setItem('userPhone', phone);
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
     storedUser.full_name = fullName;
@@ -73,7 +79,7 @@ export default function Profile() {
       <div className="container py-8 max-w-2xl">
         <div className="mb-8">
           <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
-            My Profile
+            Renter Profile {/* ✅ More specific title */}
           </h1>
           <p className="text-muted-foreground">Manage your account information</p>
         </div>
@@ -99,6 +105,24 @@ export default function Profile() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* ✅ Renter-specific quick actions */}
+            {role === 'renter' && (
+              <div className="space-y-3">
+                <Button asChild variant="outline" className="w-full justify-start">
+                  <Link to="/favorites">
+                    <Heart className="h-4 w-4 mr-2" />
+                    View Favorites
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full justify-start">
+                  <Link to="/browse">
+                    <Home className="h-4 w-4 mr-2" />
+                    Browse Properties
+                  </Link>
+                </Button>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">

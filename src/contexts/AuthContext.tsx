@@ -6,12 +6,13 @@ export interface User {
   id: string;
   email: string;
   fullName?: string;
+  role?: AppRole;
 }
 
 interface AuthContextType {
   user: User | null;
   role: AppRole | null;
-  token: string | null;        // ✅ ADDED
+  token: string | null;        
   loading: boolean;
   signUp: (
     email: string,
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(data.user);
       setRole(data.user.role || selectedRole);
-      setToken(data.token); // ✅
+      setToken(data.token); 
 
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('role', data.user.role || selectedRole);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // ✅ Added Link import
 import { Layout } from '@/components/layout/Layout';
 import { PropertyForm } from '@/components/property/PropertyForm';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,12 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, Loader2, Home, MapPin, DollarSign, Bed, Clock, CheckCircle, XCircle, Key } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Home, MapPin, DollarSign, Bed, Clock, CheckCircle, XCircle, Key, User } from 'lucide-react'; // ✅ Added User icon
 import { toast } from 'sonner';
 import type { Property } from '@/hooks/useProperties';
 
 const statusConfig = {
-  pending: { label: 'Pending', icon: Clock, className: 'bg-yellow-100 text-yellow-800' },
+  pending: { label: 'Pending Review', icon: Clock, className: 'bg-yellow-100 text-yellow-800' }, // ✅ Updated label
   approved: { label: 'Approved', icon: CheckCircle, className: 'bg-green-100 text-green-800' },
   rejected: { label: 'Rejected', icon: XCircle, className: 'bg-red-100 text-red-800' },
   rented: { label: 'Rented', icon: Key, className: 'bg-blue-100 text-blue-800' },
@@ -30,7 +30,7 @@ export default function OwnerDashboard() {
   const navigate = useNavigate();
   const { data: properties, isLoading, refetch } = useOwnerProperties();
   const createProperty = useCreateProperty();
-  const updateOwnerProperty = useUpdateOwnerProperty(); // ✅
+  const updateOwnerProperty = useUpdateOwnerProperty();
   const deleteProperty = useDeleteProperty();
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -51,7 +51,7 @@ export default function OwnerDashboard() {
 
   const handleUpdate = async (data: any) => {
     if (!editingProperty) return;
-    await updateOwnerProperty.mutateAsync({ id: editingProperty.id, updates: data }); // ✅
+    await updateOwnerProperty.mutateAsync({ id: editingProperty.id, updates: data });
     toast.success('Property updated!');
     setEditingProperty(null);
     refetch();
@@ -64,7 +64,7 @@ export default function OwnerDashboard() {
   };
 
   const handleMarkRented = async (id: string) => {
-    await updateOwnerProperty.mutateAsync({ id, updates: { status: 'rented' } }); // ✅
+    await updateOwnerProperty.mutateAsync({ id, updates: { status: 'rented' } });
     toast.success('Property marked as rented!');
     refetch();
   };
@@ -79,9 +79,15 @@ export default function OwnerDashboard() {
     );
   }
 
+  // ✅ Calculate property stats
+  const pendingCount = properties?.filter(p => p.status === 'pending').length || 0;
+  const approvedCount = properties?.filter(p => p.status === 'approved').length || 0;
+  const rentedCount = properties?.filter(p => p.status === 'rented').length || 0;
+
   return (
     <Layout>
       <div className="container py-8">
+        {/* Header with Profile Link */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
@@ -89,20 +95,76 @@ export default function OwnerDashboard() {
             </h1>
             <p className="text-muted-foreground">Manage your property listings</p>
           </div>
-          <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-            <DialogTrigger asChild>
-              <Button className="btn-gradient gap-2">
-                <Plus className="h-4 w-4" />
-                Add Property
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Property</DialogTitle>
-              </DialogHeader>
-              <PropertyForm onSubmit={handleCreate} isLoading={createProperty.isPending} />
-            </DialogContent>
-          </Dialog>
+          
+          {/* ✅ Added Profile Button */}
+          <div className="flex gap-3">
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/owner/profile">
+                <User className="h-4 w-4" />
+                My Profile
+              </Link>
+            </Button>
+            
+            <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+              <DialogTrigger asChild>
+                <Button className="btn-gradient gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Property
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Property</DialogTitle>
+                </DialogHeader>
+                <PropertyForm onSubmit={handleCreate} isLoading={createProperty.isPending} />
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* ✅ Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="shadow-soft">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-yellow-100 text-yellow-800">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-yellow-600">{pendingCount}</p>
+                  <p className="text-xs text-muted-foreground">Pending Review</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-soft">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-green-100 text-green-800">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-green-600">{approvedCount}</p>
+                  <p className="text-xs text-muted-foreground">Approved</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-soft">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-800">
+                  <Key className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-blue-600">{rentedCount}</p>
+                  <p className="text-xs text-muted-foreground">Rented</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Properties List */}

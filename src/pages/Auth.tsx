@@ -16,7 +16,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<AppRole>('renter');
+  const [role, setRole] = useState<AppRole>('renter'); // Default to renter
   const [loading, setLoading] = useState(false);
 
   const { user, signIn, signUp } = useAuth();
@@ -24,7 +24,16 @@ export default function Auth() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) navigate('/');
+    if (user) {
+      // 🔥 Redirect based on role after login
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (user.role === 'owner') {
+        navigate('/owner/dashboard');
+      } else {
+        navigate('/browse');
+      }
+    }
   }, [user, navigate]);
 
   // Handle form submit
@@ -39,7 +48,7 @@ export default function Auth() {
           toast.error(error.message);
         } else {
           toast.success('Account created! Welcome.');
-          navigate('/');
+          // Let the useEffect handle redirect
         }
       } else {
         const { error } = await signIn(email, password);
@@ -47,7 +56,7 @@ export default function Auth() {
           toast.error(error.message);
         } else {
           toast.success('Welcome back!');
-          navigate('/');
+          // Let the useEffect handle redirect
         }
       }
     } catch (err) {
@@ -65,7 +74,8 @@ export default function Auth() {
             <Home className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="font-display text-2xl">{isSignUp ? 'Create Account' : 'Welcome Back'}</CardTitle>
-          <CardDescription>{isSignUp ? 'Join HomeNest today' : 'Sign in to your account'}</CardDescription>
+          {/* ✅ Changed from "Join HomeNest today" to "Join myHome today" */}
+          <CardDescription>{isSignUp ? 'Join myHome today' : 'Sign in to your account'}</CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -108,7 +118,7 @@ export default function Auth() {
               />
             </div>
 
-            {/* Role selection for sign up */}
+            {/* Role selection for sign up - ✅ Removed Admin option */}
             {isSignUp && (
               <div className="space-y-3">
                 <Label>I am a...</Label>
@@ -136,6 +146,8 @@ export default function Auth() {
                     <span className="font-medium">Owner</span>
                     <span className="text-xs text-muted-foreground">List my properties</span>
                   </Label>
+                  
+                  {/* ❌ Admin option REMOVED */}
                 </RadioGroup>
               </div>
             )}
