@@ -1,58 +1,83 @@
+// routes/favorites.js
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
+const House = require('../models/House'); // ✅ Must match your House model filename
+const { isValidObjectId } = require('mongoose');
 
 router.use(authMiddleware);
 
-// ✅ GET user's favorite properties
+// ✅ GET /api/favorites — returns full house objects
 router.get('/', async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate('favorites');
-    res.json(user.favorites);
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Fetch only valid, existing houses
+    const favoriteHouses = await House.find({
+      _id: { $in: user.favorites }
+    });
+
+    res.json(favoriteHouses); // ✅ Array of full house objects
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get favorites error:', error);
+    res.status(500).json({ message: 'Failed to load favorites' });
   }
 });
 
-// ✅ ADD to favorites - using POST with houseId in URL
+// ✅ POST /api/favorites/:houseId — add to favorites
 router.post('/:houseId', async (req, res) => {
   try {
     const { houseId } = req.params;
-    
-    // Validate houseId format
-    if (!houseId || houseId.length !== 24) {
+
+    if (!isValidObjectId(houseId)) {
       return res.status(400).json({ message: 'Invalid house ID' });
     }
 
     const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Avoid duplicates
     if (!user.favorites.includes(houseId)) {
       user.favorites.push(houseId);
       await user.save();
     }
-    res.json({ success: true });
+
+    res.json({ success: true, message: 'Added to favorites' });
   } catch (error) {
     console.error('Add favorite error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Failed to add favorite' });
   }
 });
 
-// ✅ REMOVE from favorites
+// ✅ DELETE /api/favorites/:houseId — remove from favorites
 router.delete('/:houseId', async (req, res) => {
   try {
     const { houseId } = req.params;
-    
-    if (!houseId || houseId.length !== 24) {
+
+    if (!isValidObjectId(houseId)) {
       return res.status(400).json({ message: 'Invalid house ID' });
     }
 
     const user = await User.findById(req.user.id);
-    user.favorites = user.favorites.filter(fav => fav.toString() !== houseId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.favorites = user.favorites.filter(
+      (favId) => favId.toString() !== houseId.toString()
+    );
     await user.save();
-    res.json({ success: true });
+
+    res.json({ success: true, message: 'Removed from favorites' });
   } catch (error) {
     console.error('Remove favorite error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Failed to remove favorite' });
   }
 });
 

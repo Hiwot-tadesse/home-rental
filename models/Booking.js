@@ -1,3 +1,4 @@
+// models/Booking.js
 const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema({
@@ -11,14 +12,10 @@ const bookingSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
-    message: {
-        type: String,
-        required: true
-    },
     status: {
         type: String,
-        enum: ["Pending", "Accepted", "Rejected"],
-        default: "Pending"
+        enum: ["pending", "approved", "rejected"],
+        default: "pending"
     },
     createdAt: {
         type: Date,
