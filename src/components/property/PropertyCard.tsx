@@ -1,10 +1,11 @@
-// PropertyCard.tsx
+// src/components/property/PropertyCard.tsx
 import { Heart, MapPin, Bed, Bath, Square } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToggleFavorite } from '@/hooks/useFavorites';
+import { useCreateBooking } from '@/hooks/useBookings';
 import type { Property } from '@/hooks/useProperties';
 import { cn } from '@/lib/utils';
 
@@ -12,25 +13,42 @@ interface PropertyCardProps {
   property: Property;
   showStatus?: boolean;
   onEdit?: () => void;
-  isFavorited?: boolean; // ✅ Add this prop
+  isFavorited?: boolean;
+  showBooking?: boolean;
 }
 
-export function PropertyCard({ property, showStatus, onEdit, isFavorited = false }: PropertyCardProps) {
+export function PropertyCard({ 
+  property, 
+  showStatus, 
+  onEdit, 
+  isFavorited = false,
+  showBooking = false
+}: PropertyCardProps) {
   const { user, role } = useAuth();
   const toggleFavorite = useToggleFavorite();
+  const createBooking = useCreateBooking();
+  
   const canFavorite = user && role === 'renter';
+  const canBook = user && role === 'renter' && property.status === 'approved';
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canFavorite) return;
-    // ✅ Toggle based on current state
-    toggleFavorite.mutate({ propertyId: property.id, isFavorited });
+    // Call the toggle mutation with the expected payload shape
+    toggleFavorite.mutate({ propertyId: property.id, isFavorited: !!isFavorited });
   };
 
+  const handleBookClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canBook) return;
+    createBooking.mutate(property.id);
+  };
+
+  // ✅ Ethiopian Birr (ETB) formatting
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-ET', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'ETB',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
@@ -72,6 +90,7 @@ export function PropertyCard({ property, showStatus, onEdit, isFavorited = false
                 : "bg-white/90 text-muted-foreground hover:bg-white hover:text-primary"
             )}
             disabled={toggleFavorite.isPending}
+            aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart className={cn("h-5 w-5", isFavorited && "fill-current")} />
           </button>
@@ -125,8 +144,26 @@ export function PropertyCard({ property, showStatus, onEdit, isFavorited = false
           </p>
         )}
 
+        {/* Booking Button for Renters */}
+        {showBooking && canBook && (
+          <Button 
+            onClick={handleBookClick}
+            className="w-full mt-4 btn-gradient"
+            disabled={createBooking.isPending}
+          >
+            {createBooking.isPending ? 'Booking...' : 'Book This Property'}
+          </Button>
+        )}
+
         {onEdit && (
-          <Button variant="outline" className="w-full mt-4" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+          <Button 
+            variant="outline" 
+            className="w-full mt-4" 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              onEdit(); 
+            }}
+          >
             Edit Property
           </Button>
         )}

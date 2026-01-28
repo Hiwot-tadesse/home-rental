@@ -1,3 +1,4 @@
+// src/hooks/useFavorites.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -6,66 +7,65 @@ import type { Property } from './useProperties';
 const API_URL = 'http://localhost:5000/api';
 
 export function useFavoriteProperties() {
-  const { user } = useAuth();
-  
+  const { user, token } = useAuth();
+
   return useQuery({
     queryKey: ['favorite-properties', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
+    enabled: !!user && !!token,
+    queryFn: async (): Promise<Property[]> => {
       const res = await fetch(`${API_URL}/favorites`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
-      if (!res.ok) throw new Error('Failed to fetch favorites');
-      
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 404) return [];
+        throw new Error('Failed to load favorites');
+      }
+
       const data = await res.json();
-      // ✅ Extract favorites array from { success: true, favorites: [...] }
-      return data.favorites || []; 
+      return Array.isArray(data) ? data : [];
     },
-    enabled: !!user,
   });
 }
 
 export function useToggleFavorite() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ propertyId, isFavorited }: { propertyId: string; isFavorited: boolean }) => {
-      if (!user) throw new Error('Not authenticated');
-      
-      const token = localStorage.getItem('token');
-      
-      if (isFavorited) {
-        // Remove from favorites
-        const res = await fetch(`${API_URL}/favorites/${propertyId}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) throw new Error('Failed to remove from favorites');
-      } else {
-        // Add to favorites
-        const res = await fetch(`${API_URL}/favorites/${propertyId}`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!res.ok) throw new Error('Failed to add to favorites');
+    mutationFn: async ({
+      propertyId,
+      isFavorited,
+    }: {
+      propertyId: string;
+      isFavorited: boolean;
+    }) => {
+      if (!token || !user) throw new Error('Not authenticated');
+
+      const method = isFavorited ? 'DELETE' : 'POST';
+      const url = `${API_URL}/favorites/${propertyId}`;
+
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Operation failed');
       }
     },
-    onSuccess: (_, { isFavorited }) => {
-      queryClient.invalidateQueries({ queryKey: ['favorite-properties'] });
+    onSuccess: (_, { propertyId, isFavorited }) => {
+      // ✅ Invalidate with full query key
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ['favorite-properties', user.id],
+        });
+      }
       toast.success(isFavorited ? 'Removed from favorites' : 'Added to favorites');
     },
     onError: (error) => {
-      toast.error('Failed to update favorites: ' + error.message);
+      toast.error(error.message || 'Failed to update favorites');
     },
   });
 }

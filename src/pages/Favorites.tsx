@@ -1,3 +1,4 @@
+// src/pages/Favorites.tsx
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -45,7 +46,7 @@ export default function Favorites() {
               <PropertyCard 
                 key={property.id} 
                 property={property} 
-                isFavorited={true} // ✅ All properties in favorites page are favorited
+                isFavorited={true}
               />
             ))}
           </div>
