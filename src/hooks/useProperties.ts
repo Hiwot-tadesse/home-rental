@@ -12,7 +12,7 @@ export interface Property {
   description: string | null;
   location: string;
   city: string;
-  price: number; // Ethiopian Birr (ETB)
+  price: number;
   rooms: number;
   bathrooms: number | null;
   area_sqft: number | null;
@@ -24,13 +24,11 @@ export interface Property {
 
 /* =========================================================
    PUBLIC / MARKETPLACE PROPERTIES
-   - Renters & Owners → approved only
-   - Admin → all houses
 ========================================================= */
 export function useProperties() {
   const { role, token } = useAuth();
 
-  return useQuery({
+  return useQuery<Property[]>({
     queryKey: ['properties', role],
     queryFn: async () => {
       let url = `${API_URL}/houses?status=approved`;
@@ -42,10 +40,7 @@ export function useProperties() {
       }
 
       const res = await fetch(url, { headers });
-
-      if (!res.ok) {
-        throw new Error('Failed to fetch properties');
-      }
+      if (!res.ok) throw new Error('Failed to fetch properties');
 
       const data = await res.json();
       return Array.isArray(data) ? data : data.houses || [];
@@ -54,19 +49,17 @@ export function useProperties() {
 }
 
 /* =========================================================
-   OWNER PROPERTIES (MY HOUSES)
+   OWNER PROPERTIES
 ========================================================= */
 export function useOwnerProperties() {
   const { token, user } = useAuth();
 
-  return useQuery({
+  return useQuery<Property[]>({
     queryKey: ['owner-properties'],
     enabled: !!user,
     queryFn: async () => {
       const res = await fetch(`${API_URL}/houses/my-houses`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to fetch your properties');
@@ -78,19 +71,17 @@ export function useOwnerProperties() {
 }
 
 /* =========================================================
-   ADMIN PROPERTIES (MODERATION)
+   ADMIN PROPERTIES
 ========================================================= */
 export function useAdminProperties() {
   const { token, role } = useAuth();
 
-  return useQuery({
+  return useQuery<Property[]>({
     queryKey: ['admin-properties'],
     enabled: role === 'admin',
     queryFn: async () => {
       const res = await fetch(`${API_URL}/admin/houses`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Admin access denied');
@@ -102,41 +93,33 @@ export function useAdminProperties() {
 }
 
 /* =========================================================
-   CREATE PROPERTY
+   CREATE PROPERTY (FormData supported)
 ========================================================= */
 export function useCreateProperty() {
   const queryClient = useQueryClient();
   const { token } = useAuth();
 
   return useMutation({
-    mutationFn: async (
-      property: Omit<Property, 'id' | 'owner_id' | 'status' | 'created_at' | 'updated_at'>
-    ) => {
+    mutationFn: async (property: FormData) => {
       const res = await fetch(`${API_URL}/houses`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(property),
+        headers: { Authorization: `Bearer ${token}` },
+        body: property, // FormData
       });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to create property');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to create property');
       }
 
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['owner-properties'] });
-      // ✅ Invalidate public properties cache so new approved properties appear immediately
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast.success('House submitted for approval!');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Failed to create house');
-    },
+    onError: (err: any) => toast.error(err.message),
   });
 }
 
@@ -156,9 +139,7 @@ export function useUpdateProperty() {
 
       const res = await fetch(endpoint, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to update house status');
@@ -166,7 +147,6 @@ export function useUpdateProperty() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-properties'] });
-      // ✅ Critical: Refresh public properties when admin approves/rejects
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast.success('House status updated');
     },
@@ -185,10 +165,7 @@ export function useUpdateOwnerProperty() {
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Property> }) => {
       const res = await fetch(`${API_URL}/houses/${id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(updates),
       });
 
@@ -197,7 +174,6 @@ export function useUpdateOwnerProperty() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['owner-properties'] });
-      // ✅ Refresh public properties if owner updates an approved property
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast.success('House updated successfully');
     },
@@ -214,16 +190,10 @@ export function useDeleteProperty() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const url =
-        role === 'admin'
-          ? `${API_URL}/admin/houses/${id}`
-          : `${API_URL}/houses/${id}`;
-
+      const url = role === 'admin' ? `${API_URL}/admin/houses/${id}` : `${API_URL}/houses/${id}`;
       const res = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to delete house');
@@ -231,7 +201,6 @@ export function useDeleteProperty() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['owner-properties'] });
       queryClient.invalidateQueries({ queryKey: ['admin-properties'] });
-      // ✅ Refresh public properties when property is deleted
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast.success('House deleted');
     },
