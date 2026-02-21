@@ -6,13 +6,13 @@ export interface User {
   id: string;
   email: string;
   fullName?: string;
-  role?: AppRole;
+  role: AppRole; // 🔥 make role REQUIRED
 }
 
 interface AuthContextType {
   user: User | null;
   role: AppRole | null;
-  token: string | null;        
+  token: string | null;
   loading: boolean;
   signUp: (
     email: string,
@@ -34,7 +34,7 @@ const API_URL = 'http://localhost:5000/api/auth';
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [token, setToken] = useState<string | null>(null); // ✅ ADDED
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   /* ---------------- SIGN UP ---------------- */
@@ -60,12 +60,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Registration failed');
 
-      setUser(data.user);
-      setRole(data.user.role || selectedRole);
-      setToken(data.token); 
+      // 🔥 Force role into user object
+      const userWithRole: User = {
+        ...data.user,
+        role: data.user.role || selectedRole,
+      };
 
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('role', data.user.role || selectedRole);
+      setUser(userWithRole);
+      setRole(userWithRole.role);
+      setToken(data.token);
+
+      localStorage.setItem('user', JSON.stringify(userWithRole));
+      localStorage.setItem('role', userWithRole.role);
       localStorage.setItem('token', data.token);
 
       return { error: null };
@@ -89,12 +95,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
 
-      setUser(data.user);
-      setRole(data.user.role);
-      setToken(data.token); // ✅
+      const userWithRole: User = {
+        ...data.user,
+        role: data.user.role,
+      };
 
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('role', data.user.role);
+      setUser(userWithRole);
+      setRole(userWithRole.role);
+      setToken(data.token);
+
+      localStorage.setItem('user', JSON.stringify(userWithRole));
+      localStorage.setItem('role', userWithRole.role);
       localStorage.setItem('token', data.token);
 
       return { error: null };
@@ -110,18 +121,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setRole(null);
     setToken(null);
-    localStorage.clear();
+    localStorage.removeItem('user');
+    localStorage.removeItem('role');
+    localStorage.removeItem('token');
   };
 
   /* ---------------- RESTORE SESSION ---------------- */
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    const storedRole = localStorage.getItem('role');
     const storedToken = localStorage.getItem('token');
 
-    if (storedUser && storedRole && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setRole(storedRole as AppRole);
+    if (storedUser && storedToken) {
+      const parsedUser: User = JSON.parse(storedUser);
+      setUser(parsedUser);
+      setRole(parsedUser.role);
       setToken(storedToken);
     }
 
@@ -133,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         role,
-        token,     // ✅ EXPOSED
+        token,
         loading,
         signUp,
         signIn,
