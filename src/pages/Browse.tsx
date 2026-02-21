@@ -1,37 +1,16 @@
-import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { PropertyCard } from '@/components/property/PropertyCard';
 import { useProperties } from '@/hooks/useProperties';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Loader2, Home } from 'lucide-react';
 
 export default function Browse() {
-  const { user, role, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-
-  // Handle authentication loading & redirect
-  if (authLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!user) {
-    navigate('/auth');
-    return null;
-  }
-
+  // ❌ REMOVED AUTH CHECK - Guests can browse!
   const { data: properties = [], isLoading } = useProperties();
 
   return (
     <Layout>
       <div className="container py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
             Browse Properties
@@ -41,7 +20,6 @@ export default function Browse() {
           </p>
         </div>
 
-        {/* Results — identical logic to home page */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -57,7 +35,7 @@ export default function Browse() {
                 <PropertyCard
                   key={property.id}
                   property={property}
-                  showBooking={role === 'renter'}
+                  showBooking={false} // ❌ Guests can't book
                 />
               ))}
             </div>
@@ -73,11 +51,6 @@ export default function Browse() {
             <p className="text-muted-foreground mb-4">
               Check back soon for new listings
             </p>
-            {role === 'owner' && (
-              <Button asChild className="btn-gradient">
-                <a href="/owner/dashboard">Add Your First Property</a>
-              </Button>
-            )}
           </div>
         )}
       </div>
